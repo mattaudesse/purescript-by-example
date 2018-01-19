@@ -1,0 +1,14 @@
+{
+    "name": "mattaudesse-purescript-by-example-chapter-11",
+    "set": "psc-0.11.7",
+    "source": "https://github.com/purescript/package-sets.git",
+    "depends": [
+        "maps",
+        "sets",
+        "transformers",
+        "strings",
+        "console",
+        "eff",
+        "prelude"
+    ]
+}
