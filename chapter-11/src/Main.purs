@@ -1,16 +1,20 @@
 module Main where
 
 import Prelude
-import Control.Monad.Eff         (Eff, foreachE)
-import Control.Monad.Eff.Console (CONSOLE, log, logShow)
-import Control.Monad.Reader      (Reader, ask, local, runReader)
-import Control.Monad.State       (State, execState, runState, evalState)
-import Control.Monad.State.Class (modify)
-import Data.Array                (replicate)
-import Data.Foldable             (traverse_)
-import Data.String               (toCharArray, joinWith)
-import Data.Traversable          (sequence)
-import Data.Tuple                (Tuple(..))
+import Control.Monad.Eff          (Eff, foreachE)
+import Control.Monad.Eff.Console  (CONSOLE, log, logShow)
+import Control.Monad.Reader       (Reader, ask, local, runReader)
+import Control.Monad.State        (State, execState, runState, evalState)
+import Control.Monad.State.Class  (modify)
+import Control.Monad.Writer       (Writer, execWriter, runWriter)
+import Control.Monad.Writer.Class (tell)
+import Data.Array                 (replicate)
+import Data.Foldable              (intercalate, traverse_)
+import Data.Int                   (even)
+import Data.Monoid.Additive       (Additive(..))
+import Data.String                (toCharArray, joinWith)
+import Data.Traversable           (sequence)
+import Data.Tuple                 (Tuple(..))
 
 
 sumArray :: Array Number -> State Number Unit
@@ -184,6 +188,65 @@ testRender =  render $ cat
         ]
     ]
 
+
+--------------------------------------------------------------------------------
+
+-- Chapter 11, `Writer` monad exercise 1:
+-- (Medium) Rewrite the `sumArray` function above using the `Writer` monad and
+-- the `Additive Int` monoid from the purescript-monoid package.
+
+sumArrayWriter :: Array Int -> Int
+sumArrayWriter ns =
+    let Additive i = execWriter $ traverse_ (\n -> tell $ Additive n) ns
+    in  i
+
+
+-- Chapter 11, `Writer` monad exercise 2:
+-- (Medium) The Collatz function is defined on natural numbers n as n / 2 when
+-- n is even, and 3 * n + 1 when n is odd. For example, the iterated Collatz
+-- sequence starting at 10 is as follows:
+
+--  `10, 5, 16, 8, 4, 2, 1, ...`
+
+-- It is conjectured that the iterated Collatz sequence always reaches 1 after
+-- some finite number of applications of the Collatz function.
+
+-- Write a function which uses recursion to calculate how many iterations of
+-- the Collatz function are required before the sequence reaches 1.
+
+-- Modify your function to use the Writer monad to log each application of the
+-- Collatz function.
+
+nextCollatz :: Int -> Int
+nextCollatz i
+    | even i    = i / 2
+    | otherwise = 3 * i + 1
+
+
+collatz :: Int -> Int
+collatz = f 1
+    where f count i | i == 1    = count
+                    | otherwise = f (count + 1) (nextCollatz i)
+
+
+collatz' :: Int -> Writer (Array String) Int
+collatz' = f 1
+    where f count i = do
+            tell [ show i ]
+            case i of
+                 1         -> pure count
+                 otherwise -> f (count + 1) (nextCollatz i)
+
+
+collatz'log :: Int -> String
+collatz'log =  intercalate ", " <<< execWriter <<< collatz'
+
+
+collatz'count :: Int -> Int
+collatz'count i =
+    let Tuple i _ = runWriter (collatz' i)
+     in i
+
 --------------------------------------------------------------------------------
 
 
@@ -205,4 +268,24 @@ main = do
     log "11.5.4 - Using the `Reader` monad, render an indented document:"
     log ""
     log testRender
+    log ""
+
+    -- `Writer` monad ----------------------------------------------------------
+
+    log ( "11.6.1 - Using the `Writer` monad and `Additive Int`, rewrite the"
+        <> " `sumArray` function:"
+        )
+    log (    "  `sumArrayWriter [ 10, 20, 30, 40, 50 ]` = "
+        <> show (sumArrayWriter [ 10, 20, 30, 40, 50 ])
+        )
+    log ""
+
+    log "11.6.2 - Implement the \"Collatz\" function using the `Writer` monad:"
+    log (  "  `collatz'log 10` = "
+        <> collatz'log 10
+        )
+    log (  "  `collatz' 10` finished in "
+        <> show (collatz'count 10)
+        <> " iterations"
+        )
     log ""
